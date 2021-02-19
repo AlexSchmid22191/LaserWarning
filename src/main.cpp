@@ -11,25 +11,18 @@ const byte pin_led_alarm = 7;
 const byte pin_speaker = 8;
 const byte pin_reed_switch = 9;
 
+const bool mirror_up_pos = false;
+const bool mirror_down_pos = true;
+
 //Reed switch debounce time (ms)
 unsigned int debounce_time = 200;
 
 //Mirror position variable
-//False means mirror is down
 bool mirror_pos;
 
-//Time of last mirror position change
-unsigned int time_of_last_change;
-
 //Some notes
-const unsigned int B = 123;
-const unsigned int C = 277;
-const unsigned int D = 294;
-const unsigned int E = 330;
-
-const unsigned long eighth = 278;
-const unsigned long half = 1111;
-const unsigned long full = 2222;
+const unsigned int NOTE_HIGH = 1200;
+const unsigned int NOTE_LOW = 800;
 
 //Start and stop the light alarm
 void start_light_alarm();
@@ -47,24 +40,24 @@ void setup()
 
     pinMode(pin_reed_switch, INPUT_PULLUP);
 
-    time_of_last_change = millis();
-
     mirror_pos = digitalRead(pin_reed_switch);
 }
 
 void loop()
 {
+    static unsigned long time_of_last_change = millis();
     if(reed_switch_changed(pin_reed_switch, time_of_last_change, mirror_pos))
     {
         start_light_alarm();
         play_sound_alarm(pin_speaker);
         stop_light_alarm();
+        time_of_last_change = millis();
     }
 
     mirror_pos = digitalRead(pin_reed_switch);
 
-    digitalWrite(pin_led_mirror_down, !mirror_pos);
-    digitalWrite(pin_led_mirror_up, mirror_pos);
+    digitalWrite(pin_led_mirror_down, mirror_pos==mirror_down_pos);
+    digitalWrite(pin_led_mirror_up, mirror_pos==mirror_up_pos);
 }
 
 void start_light_alarm()
@@ -105,24 +98,14 @@ ISR(TIMER1_COMPA_vect)
 
 void play_sound_alarm(byte sound_pin)
 {
-    tone(sound_pin, E, eighth*9/10);
-    delay(eighth);
-    tone(sound_pin, E, eighth*9/10);
-    delay(eighth);
-    tone(sound_pin, E, eighth*9/10);
-    delay(eighth);
-    tone(sound_pin, C, half*9/10);
-    delay(half);
-    delay(eighth);
-
-    tone(sound_pin, D, eighth*9/10);
-    delay(eighth);
-    tone(sound_pin, D, eighth*9/10);
-    delay(eighth);
-    tone(sound_pin, D, eighth*9/10);
-    delay(eighth);
-    tone(sound_pin, B, half*9/10);
-    delay(full);
+  for(byte i=0; i<3; i++)
+  {
+    tone(sound_pin, NOTE_HIGH);
+    delay(250);
+    tone(sound_pin, NOTE_LOW);
+    delay(250);
+  }
+  noTone(sound_pin);
 }
 
 bool reed_switch_changed(byte reed_pin, unsigned int time_of_last, bool mirror_position)
